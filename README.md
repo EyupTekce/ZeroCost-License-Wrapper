@@ -38,4 +38,4 @@ The system consists of three main components working together:
 
 *This project was developed as a Minimum Viable Product (MVP) to demonstrate system integration between desktop applications and cloud services.* It is a great, cost-effective solution for indie projects and small user bases. However, for enterprise-level security, migrating to a dedicated database (like PostgreSQL) and a secured backend is recommended, as C# wrappers can potentially be reverse-engineered by advanced users.
 
-**Developed by [Senin Adın/Kullanıcı Adın]**
+**Developed by Eyüp Tekçe**
