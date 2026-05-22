@@ -13,7 +13,7 @@ namespace LicenseCreator
 {
     public partial class Form1 : Form
     {
-        
+
         private int currentStep = 0;
         private string selectedExePath = "";
         private int keyCount = 0;
@@ -36,14 +36,14 @@ namespace LicenseCreator
         private System.Windows.Forms.Timer countdownTimer;
         private int countdownSeconds = 10;
 
-        
+
         public Form1()
         {
             InitializeComponent();
             ShowStep(0);
         }
 
-        
+
         private void ShowStep(int step)
         {
             currentStep = step;
@@ -71,7 +71,7 @@ namespace LicenseCreator
             }
         }
 
-        
+
         private void ShowStep0()
         {
             lblStepTitle.Text = stepTitles[0];
@@ -90,7 +90,7 @@ namespace LicenseCreator
             btnNext.Enabled = selectedExePath != "";
         }
 
-        
+
         private void ShowStep1()
         {
             lblStepTitle.Text = stepTitles[1];
@@ -106,7 +106,7 @@ namespace LicenseCreator
             btnNext.Enabled = true;
         }
 
-        
+
         private void ShowStep2()
         {
             lblStepTitle.Text = stepTitles[2];
@@ -135,7 +135,7 @@ namespace LicenseCreator
             StartCountdown();
         }
 
-        
+
         private void ShowStep3()
         {
             lblStepTitle.Text = stepTitles[3];
@@ -156,7 +156,7 @@ namespace LicenseCreator
             btnNext.Enabled = true;
         }
 
-        
+
         private void ShowStep4()
         {
             lblStepTitle.Text = stepTitles[4];
@@ -184,7 +184,7 @@ namespace LicenseCreator
             btnNext.Enabled = true;
         }
 
-         
+
         private void ShowStep5()
         {
             lblStepTitle.Text = stepTitles[5];
@@ -201,7 +201,7 @@ namespace LicenseCreator
             btnNext.Enabled = txtDeploymentId.Text.Trim().Length > 10;
         }
 
-        
+
         private void ShowCompleted()
         {
             lblStepTitle.Text = "🎉   Setup Completed!";
@@ -217,21 +217,21 @@ namespace LicenseCreator
                 "📦   " + exePath + "\r\n\r\n" +
                 "─────────────────────────────────────────────────────────────\r\n\r\n" +
                 "DISTRIBUTION INSTRUCTIONS:\r\n\r\n" +
-                "• Place the generated license exe in the same folder as\r\n" +
-                "  your original application exe.\r\n\r\n" +
+                "• Send ONLY the generated license exe to your users.\r\n" +
+                "  (Your original exe is securely embedded inside it).\r\n\r\n" +
                 "• Send the keys from keys.txt to your users.\r\n\r\n" +
                 "WHAT HAPPENS FOR THE USER:\r\n\r\n" +
                 "• User opens the license exe and enters a key.\r\n" +
                 "• Real-time verification via Google Sheets.\r\n" +
                 "• HWID check: prevents key usage on other devices.\r\n" +
-                "• Expiration check: denies access if duration expired.\r\n" +
-                "• Original application starts if all checks pass.";
+                "• Original application starts directly in RAM (In-Memory Execution)\r\n" +
+                "  without being extracted to the hard drive.";
 
             panelFinal.Visible = true;
             lblFinalInfo.Text = msg;
         }
 
-        
+
         private void btnNext_Click(object sender, EventArgs e)
         {
             if (currentStep == 5)
@@ -281,7 +281,7 @@ namespace LicenseCreator
                 Process.Start("notepad.exe", "\"" + savedCodePath + "\"");
         }
 
-        
+
         private List<string> GenerateKeys(int count)
         {
             var keys = new HashSet<string>();
@@ -376,7 +376,7 @@ namespace LicenseCreator
 }";
         }
 
-        
+
         private string BuildLicenseExe()
         {
             string deployUrl = "https://script.google.com/macros/s/" + deploymentId + "/exec";
@@ -403,6 +403,7 @@ namespace LicenseCreator
                 return fallback;
             }
 
+            
             string args =
                 $"/target:winexe /optimize+ " +
                 $"/out:\"{outPath}\" " +
@@ -411,6 +412,7 @@ namespace LicenseCreator
                 $"/reference:System.Drawing.dll " +
                 $"/reference:System.Windows.Forms.dll " +
                 $"/reference:System.Net.dll " +
+                $"/resource:\"{selectedExePath}\",\"EmbeddedPayload.exe\" " +
                 $"\"{srcPath}\"";
 
             var psi = new ProcessStartInfo
@@ -458,7 +460,7 @@ namespace LicenseCreator
             return null;
         }
 
-        
+
         private string BuildCheckerSource(string deployUrl, string protectedExe)
         {
             string exeFileName = Path.GetFileName(protectedExe).Replace("\\", "\\\\").Replace("\"", "\\\"");
@@ -469,6 +471,7 @@ using System.Drawing;
 using System.IO;
 using System.Management;
 using System.Net;
+using System.Reflection; // In-Memory execution için gerekli
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Windows.Forms;
@@ -614,31 +617,71 @@ namespace LicenseCheck
                 string response = wc.DownloadString(url);
 
                 if (response.StartsWith(""SUCCESS""))
-                {{
-                    string[] parts   = response.Split('|');
-                    string   remaining = parts.Length > 1 ? parts[1] : ""?"";
-                    lblStatus.ForeColor = Color.FromArgb(70, 200, 110);
-                    lblStatus.Text      = ""✅   License valid! Remaining days: "" + remaining + ""\r\nLaunching application..."";
-                    Application.DoEvents();
-                    Thread.Sleep(1400);
+{{
+    string[] parts   = response.Split('|');
+    string   remaining = parts.Length > 1 ? parts[1] : ""?"";
+    lblStatus.ForeColor = Color.FromArgb(70, 200, 110);
+    lblStatus.Text      = ""✅   License valid! Remaining days: "" + remaining + ""\r\nLaunching application in memory..."";
+    Application.DoEvents();
+    Thread.Sleep(1400);
 
-                    string dir       = AppDomain.CurrentDomain.BaseDirectory;
-                    string target    = Path.Combine(dir, ""{exeFileName}"");
-                    if (File.Exists(target))
-                        System.Diagnostics.Process.Start(target);
-                    else
-                    {{
-                        using (var ofd = new OpenFileDialog())
-                        {{
-                            ofd.Title  = ""Select {exeFileName} location"";
-                            ofd.Filter = ""Exe (*.exe)|*.exe"";
-                            if (ofd.ShowDialog() == DialogResult.OK)
-                                System.Diagnostics.Process.Start(ofd.FileName);
-                        }}
-                    }}
-                    this.Close();
-                    return;
-                }}
+    // --- IN-MEMORY EXECUTION (RAM ÜZERİNDEN ÇALIŞTIRMA) BAŞLANGICI ---
+    try
+    {{
+        byte[] exeBytes;
+        // Gömülü dosyayı diske yazmadan doğrudan RAM'e okuyoruz
+        using (Stream resStream = Assembly.GetExecutingAssembly().GetManifestResourceStream(""EmbeddedPayload.exe""))
+        {{
+            if (resStream == null) throw new Exception(""İçine gömülmüş program bulunamadı!"");
+            exeBytes = new byte[resStream.Length];
+            resStream.Read(exeBytes, 0, exeBytes.Length);
+        }}
+
+        // RAM'deki byte dizisinden Assembly'i (programı) yüklüyoruz
+        Assembly targetAssembly = Assembly.Load(exeBytes);
+        MethodInfo entryPoint = targetAssembly.EntryPoint;
+
+        if (entryPoint == null)
+        {{
+            MessageBox.Show(""Bu yöntem yalnızca .NET tabanlı programlarda çalışır."", ""Hata"", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            return;
+        }}
+
+        this.Hide(); // Lisans formunu gizle
+        
+        // Ana programı izole edilmiş yeni bir STA (Windows Forms) iş parçacığında başlatıyoruz
+        Thread runThread = new Thread(() =>
+        {{
+            try
+            {{
+                object[] parameters = entryPoint.GetParameters().Length == 0 ? null : new object[] {{ new string[0] }};
+                entryPoint.Invoke(null, parameters);
+            }}
+            catch (Exception innerEx)
+            {{
+                // BURASI KRİTİK: Gerçek hatayı (InnerException) yakalayıp gösteriyoruz!
+                string gercekHata = innerEx.InnerException != null ? innerEx.InnerException.Message : innerEx.Message;
+                MessageBox.Show(""Ana exe RAM'de çalışırken çöktü!\n\nAsıl Sebep: "" + gercekHata, ""Ana Program Hatası"", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }}
+            finally
+            {{
+                // Ana program kapandığında (veya çöktüğünde) tüm arka planı temizle ve çık
+                Environment.Exit(0);
+            }}
+        }});
+        
+        runThread.SetApartmentState(ApartmentState.STA); // Arayüzü olan programlar için şart
+        runThread.Start();
+    }}
+    catch (Exception ex)
+    {{
+        MessageBox.Show(""RAM'e yükleme sırasında hata: "" + ex.Message, ""Hata"", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        this.Close();
+    }}
+    // --- IN-MEMORY EXECUTION BİTİŞİ ---
+
+    return;
+}}
 
                 switch (response)
                 {{
@@ -685,7 +728,7 @@ namespace LicenseCheck
 }}";
         }
 
-        
+
         private void StartCountdown()
         {
             countdownSeconds = 10;
@@ -729,7 +772,7 @@ namespace LicenseCheck
                 lblStep2Info.Text = t.Substring(0, idx) + newLine;
         }
 
-        
+
         private void UpdateProgress(int step)
         {
             progressBar.Value = Math.Min(step * 100 / 6, 100);
